@@ -1,6 +1,12 @@
+require 'hpricot'
+
 module ActiveMerchant
   module Billing
     class AuthorizeNetCimGatewayTest < AuthorizeNetCimGateway
+      #this card won't let you bill it when you try with createCustomerProfileTransactionRequest
+      DECLINED_TEST_CARD_NUMBER = '4000111100001111'
+      DECLINED_PAYMENT_PROFILE_ID = '9999'
+      
       def initialize(options = {})
         @options = {:login => "X", :password => "Y"}
         @test_amount = 100
@@ -38,12 +44,17 @@ module ActiveMerchant
         }
 
       end
-
+      
       def commit(action, request)
         url = test? ? test_url : live_url
         #xml = ssl_post(url, request, "Content-Type" => "text/xml")
-        xml = eval("successful_#{action}_response_xml")
-
+        
+        if custom_response?(request)
+          xml = custom_response(request)
+        else
+          xml = eval("successful_#{action}_response_xml")
+        end
+        
         response_params = parse(action, xml)
 
         message = response_params['messages']['message']['text']
@@ -60,7 +71,29 @@ module ActiveMerchant
       end
 
       private
-
+      
+      def custom_response?(request)
+        !custom_response(request).empty?
+      end
+      
+      def custom_response(request)
+        request_doc = Hpricot.XML(request)
+        
+        if (request_doc.search( 
+          '//createCustomerPaymentProfileRequest/paymentProfile/payment/creditCard/cardNumber' ).
+          text() == DECLINED_TEST_CARD_NUMBER)
+          
+          return eval("successful_create_customer_payment_profile_with_decline_payment_profile_id_response_xml")
+        elsif  (request_doc.search( 
+            '//createCustomerProfileTransactionRequest/transaction/profileTransAuthCapture/customerPaymentProfileId' ).
+            text() == DECLINED_PAYMENT_PROFILE_ID)
+            
+            return eval("unsuccessful_create_customer_profile_transaction_response_xml")
+        end
+        
+        ""
+      end
+      
       def test_credit_card(number = '4242424242424242', options = {})
         defaults = {
           :number => number,
@@ -125,6 +158,27 @@ module ActiveMerchant
               </message>
             </messages>
             <customerPaymentProfileId>#{@test_customer_payment_profile_id}</customerPaymentProfileId>
+            <validationDirectResponse>This output is only present if the ValidationMode input parameter is passed with a value of testMode or liveMode</validationDirectResponse>
+          </createCustomerPaymentProfileResponse>
+        XML
+      end
+      
+      def successful_create_customer_payment_profile_with_decline_payment_profile_id_response_xml
+        <<-XML
+          <?xml version="1.0" encoding="utf-8" ?>
+          <createCustomerPaymentProfileResponse
+            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+            xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+            xmlns="AnetApi/xml/v1/schema/AnetApiSchema.xsd">
+            <refId>refid1</refId>
+            <messages>
+              <resultCode>Ok</resultCode>
+              <message>
+                <code>I00001</code>
+                <text>Successful.</text>
+              </message>
+            </messages>
+            <customerPaymentProfileId>#{DECLINED_PAYMENT_PROFILE_ID}</customerPaymentProfileId>
             <validationDirectResponse>This output is only present if the ValidationMode input parameter is passed with a value of testMode or liveMode</validationDirectResponse>
           </createCustomerPaymentProfileResponse>
         XML
@@ -431,7 +485,7 @@ module ActiveMerchant
                 <text>The transaction was unsuccessful.</text>
               </message>
             </messages>
-            <directResponse>#{UNSUCCESSUL_DIRECT_RESPONSE[:refund]}</directResponse>
+            <directResponse></directResponse>
           </createCustomerProfileTransactionResponse>
         XML
       end
