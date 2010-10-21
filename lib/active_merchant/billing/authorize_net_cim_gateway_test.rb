@@ -71,7 +71,7 @@ module ActiveMerchant
       end
 
       private
-      
+            
       def custom_response?(request)
         !custom_response(request).empty?
       end
@@ -284,7 +284,7 @@ module ActiveMerchant
                 <payment>
                   <creditCard>
                       <cardNumber>#{test_credit_card.number}</cardNumber>
-                      <expirationDate>#{CIMGATEWAY.send(:expdate, test_credit_card)}</expirationDate>
+                      <expirationDate>#{expdate(test_credit_card)}</expirationDate>
                   </creditCard>
                 </payment>
               </paymentProfiles>
@@ -314,7 +314,7 @@ module ActiveMerchant
                 <payment>
                   <creditCard>
                     <cardNumber>#{test_credit_card.number}</cardNumber>
-                    <expirationDate>#{CIMGATEWAY.send(:expdate, test_credit_card)}</expirationDate>
+                    <expirationDate>#{expdate(test_credit_card)}</expirationDate>
                   </creditCard>
                 </payment>
               </paymentProfiles>
@@ -354,7 +354,7 @@ module ActiveMerchant
                 <payment>
                   <creditCard>
                       <cardNumber>#{test_credit_card.number}</cardNumber>
-                      <expirationDate>#{CIMGATEWAY.send(:expdate, test_credit_card)}</expirationDate>
+                      <expirationDate>#{expdate(test_credit_card)}</expirationDate>
                   </creditCard>
                 </payment>
               </paymentProfiles>
